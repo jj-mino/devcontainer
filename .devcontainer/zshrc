@@ -1,0 +1,168 @@
+# Enable Powerlevel10k instant prompt. Should stay close to the top of ~/.zshrc.
+# Initialization code that may require console input (password prompts, [y/n]
+# confirmations, etc.) must go above this block; everything else may go below.
+if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
+  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
+fi
+
+export LANG='en_US.UTF-8'
+export LANGUAGE='en_US:en'
+export LC_ALL='en_US.UTF-8'
+export TERM=xterm
+export USERNAME='jj'
+
+ZSH_DISABLE_COMPFIX="true"
+
+##### Zsh/Oh-my-Zsh Configuration
+export ZSH="/home/${USERNAME}/.oh-my-zsh"
+
+ZSH_THEME="powerlevel10k/powerlevel10k"
+plugins=(git history-substring-search )
+
+source $ZSH/oh-my-zsh.sh
+POWERLEVEL9K_SHORTEN_STRATEGY="truncate_to_last"
+POWERLEVEL9K_LEFT_PROMPT_ELEMENTS=(user dir vcs status)
+POWERLEVEL9K_RIGHT_PROMPT_ELEMENTS=()
+POWERLEVEL9K_STATUS_OK=false
+POWERLEVEL9K_STATUS_CROSS=true
+
+# To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
+[[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
+
+
+getLambdaFunctions(){
+  for REGION in us-east-1 us-east-2 us-west-1 us-west-2
+  do
+    aws lambda list-functions --function-version ALL --region $REGION --output text --query "Functions[?Runtime=='python3.6'].FunctionArn"
+  done
+}
+
+
+getKubeconfig(){
+  if [ -n "$1" ]; then KUBECONFIGPATH=$1 else KUBECONFIGPATH="/home/${USERNAME}/.kube" fi
+  for REGION in us-east-1 us-east-2 us-west-1 us-west-2
+  do
+    for cluster in $(aws eks --region $REGION list-clusters --output text --query 'clusters[*]')
+    do 
+      aws eks --region $REGION update-kubeconfig --name $cluster --kubeconfig "/${KUBECONFIGPATH}/config_$cluster" --alias $cluster 
+      export KUBECONFIG=$KUBECONFIG:"/${KUBECONFIGPATH}/config_$cluster"
+    done
+  done
+}
+
+awslogin(){
+  aws sso login --profile $1
+}
+
+
+getpods () {
+  if [ -n "$1" ]; then NAMESPACE=$1 else NAMESPACE="default" fi
+  kubectl get pods --sort-by=.status.startTime --namespace $NAMESPACE
+}
+
+
+getpodsvars () {
+  clear
+  if [ -n "$1" ]; then NAMESPACE=$1 else NAMESPACE="default" fi
+  if [ -n "$2" ]; then 
+    echo " "; echo " "; echo "===================================================================="; echo "$2 [${NAMESPACE}]"; 
+    kubectl exec -it "$2" --namespace $NAMESPACE -- printenv | sort; 
+  else
+    for pod_object in $(kubectl get pods --namespace $NAMESPACE -o jsonpath='{range .items[*]}{@.metadata.name}{","}{@.status.startTime}{"\n"}{end}') ; do 
+      echo " "; echo " "; echo "===================================================================="; pod=$(echo $pod_object | cut -f1 -d,); CREATION=$(echo $pod_object | cut -f2 -d,); echo "$pod [${NAMESPACE}] | $CREATION"; 
+      kubectl exec -it $pod --namespace $NAMESPACE -- printenv | sort; 
+    done
+  fi
+}
+
+
+# alias explorer="explorer.exe ."
+alias clear='clear && echo -en "\e[3J"'
+
+
+
+dockerclean () {
+  docker rm -vf $(docker ps -a -q)
+  docker rmi -f $(docker images -a -q)
+}
+
+alias tfscan="tfsec --concise-output --exclude-downloaded-modules"
+
+
+new-awsexternalsecret () {
+  # create externalsecrets at aws secret manager
+  SECRETNAME="$1"
+  SECRETVALUE="$2"
+  DESCRIPTION=$(python3 -c "print ('$(echo $SECRETNAME | perl -0 -pe "s/\/|_/ /gss")'.title())")
+
+  if [[ $(aws secretsmanager get-secret-value --secret-id $SECRETNAME 2>Null) ]]; then
+    echo "** updating secret value"
+    aws secretsmanager update-secret --secret-id $SECRETNAME --description $DESCRIPTION --secret-string $SECRETVALUE > /dev/null
+  else
+    echo "** creating secret"
+    aws secretsmanager create-secret --name $SECRETNAME --description $DESCRIPTION --secret-string $SECRETVALUE > /dev/null
+  fi
+  echo "\nexternalsecret:"
+  echo "  - key: $SECRETNAME"
+  echo "    name: ${SECRETNAME##*/}"
+}
+
+getekspublicsubnets () {
+  for subnetId in $(aws eks describe-cluster --name $1 --output text --query 'cluster.resourcesVpcConfig.subnetIds') ; do
+    if $(echo $(aws ec2 describe-subnets --subnet-ids $subnetId --output text) | grep -v -q "kubernetes.io/role/internal-elb 1"); then
+      echo $subnetId
+    fi
+  done
+}
+
+get-eksauth () {
+  kubectl get configmap aws-auth -n kube-system -o=yaml
+}
+
+
+get-podsvars () {
+  kubectl exec $1 -n $2 -it -- sh -c "export -p | sed 's/declare -x //'"
+}
+
+get-podsrestartsreason () {
+  kubectl get pods -n $1 -o="custom-columns=NAME:.metadata.name,TerminatedReason:.status.containerStatuses[].lastState.terminated.reason,Event:.status.containerStatuses[].lastState.terminated.finishedAt" | grep -v "<none>" 
+}
+
+alias grep='grep --color=auto'
+alias k='kubectl'
+alias kc='\kubectl ctx'
+alias kp='kubectl ipick'
+alias stern='kubectl stern'
+alias branch='git branch --sort=-committerdate'
+
+command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
+
+source <(kubectl completion zsh)
+
+source <(stern --completion=zsh)
+
+source <(kpexec --completion zsh) 
+
+gh config set git_protocol https -h github.com && gh auth setup-git && gh auth login --with-token < .devcontainer/github_pat.txt 
+git config --global core.editor "code --wait"
+
+alias kresources='kubectl custom-cols -o resources pods'
+
+git config pull.rebase true
+
+export KUBE_EDITOR="code -w"
+export LESS="-F -X -R"
+
+export AWS_DEFAULT_REGION=us-west-2
+
+## parallel
+# seq 10 | parallel --max-args 0 --jobs 10 "curl -w '\n%{http_code} - %{time_total} - ' http://localhost:8888/ --output /dev/null --location --silent && printf SUCCESS || printf FAIL"
+
+KUBECONFIGPATH="/home/${USERNAME}/.kube"
+for kubeconfig in $(ls "$KUBECONFIGPATH" | grep -iE config)
+do 
+  export KUBECONFIG=$KUBECONFIG:"/${KUBECONFIGPATH}/$kubeconfig"
+done
+
+
+export PATH="/home/${USERNAME}/.pulumi/bin:$PATH"   

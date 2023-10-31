@@ -1,0 +1,193 @@
+{
+  "name": "VSCode",
+  //hostname don't support "-" on Windows
+  "runArgs": [
+    // "--dns=8.8.8.8", 
+    "--name=${localEnv:HOSTNAME}dev",
+    "--hostname=${localEnv:HOSTNAME}dev",
+    "--env-file",
+    ".devcontainer/.env"
+    // ${localWorkspaceFolder}/.devcontainer/.env
+  ],
+  "build": {
+    "args": {
+      "USERNAME": "jj"
+      // "USERNAME": "${localEnv:USER}"
+    }
+  },
+  "postAttachCommand": "apt update",
+  "features": {
+    // look for available features at https://containers.dev/features
+    // use the "version" attribute to pin to a specific version
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "1.27",
+      "helm": "latest"
+    },
+    "ghcr.io/devcontainers/features/terraform:1": {},
+    "ghcr.io/devcontainers/features/go:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:1": {
+      "moby": true
+    },
+    "ghcr.io/devcontainers/features/aws-cli:1": {},
+    "ghcr.io/devcontainers/features/azure-cli:1": {},
+    "ghcr.io/devcontainers-contrib/features/zsh-plugins:0": {
+      "omzPlugins": "https://github.com/zsh-users/zsh-autosuggestions.git https://github.com/marlonrichert/zsh-autocomplete.git https://github.com/zsh-users/zsh-syntax-highlighting.git https://github.com/zdharma-continuum/fast-syntax-highlighting.git",
+      "plugins": "git kubectl zsh-autosuggestions zsh-syntax-highlighting fast-syntax-highlighting zsh-autocomplete"
+    },
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/itsmechlark/features/act:1": {},
+    "ghcr.io/devcontainers-contrib/features/neovim-apt-get:1": {},
+    "ghcr.io/devcontainers/features/powershell:1": {
+      "modules": "pester,DnsClient-PS,newtonsoft.json,az,AWS.Tools.Installer,AWS.Tools.SecretsManager"
+    },
+    "ghcr.io/audacioustux/devcontainers/pulumi:1": {},
+    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
+      "packages": "software-properties-common,apt-transport-https,ca-certificates,curl,vim,wget,gnupg,git,lsb-release,unzip,zsh,fonts-powerline,default-jre,dnsutils,telnet,watch,python3,python3-pip,locales,locales-all,tzdata,jq"
+    },
+    "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {
+      "shallowClone": "false" // Shallow clone allows significant reduction in the installation size at the expense of not being able to run brew update
+    },
+    "ghcr.io/audacioustux/devcontainers/cilium:1": {}, // cilium cli
+    "ghcr.io/devcontainers-contrib/features/kubectx-kubens:1": {}
+  },
+  // "image": "dev",
+  "dockerFile": "./dockerfile",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-vscode.powershell",
+        "HashiCorp.terraform",
+        "humao.rest-client",
+        "darkriszty.markdown-table-prettify",
+        "redhat.vscode-yaml",
+        "ryu1kn.partial-diff",
+        "esbenp.prettier-vscode",
+        "ms-python.python",
+        "janisdd.vscode-edit-csv",
+        "VisualStudioExptTeam.vscodeintellicode",
+        "mhutchie.git-graph",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "donjayamanne.githistory",
+        "wholroyd.jinja",
+        "oderwat.indent-rainbow",
+        "vscode-icons-team.vscode-icons",
+        "ms-vscode-remote.vscode-remote-extensionpack",
+        "sandipchitale.kubernetes-file-system-explorer",
+        "sandipchitale.kubernetes-no-load-on-select",
+        "ms-azuretools.vscode-docker",
+        "batisteo.vscode-django",
+        "SirTori.indenticator",
+        "PKief.material-icon-theme",
+        "ms-python.python",
+        "formulahendry.auto-rename-tag",
+        "zhuangtongfa.Material-theme",
+        "rafamel.subtle-brackets",
+        "eamodio.gitlens"
+      ]
+    },
+    "settings": {
+      "dev.containers.logLevel": "trace",
+      "terminal.integrated.profiles.windows": {
+        "PowerShell": {
+          "source": "PowerShell",
+          "icon": "terminal-powershell"
+        },
+        "Command Prompt": {
+          "path": [
+            "${env:windir}\\Sysnative\\cmd.exe",
+            "${env:windir}\\System32\\cmd.exe"
+          ],
+          "args": [],
+          "icon": "terminal-cmd"
+        },
+        "Git Bash": {
+          "source": "Git Bash"
+        },
+        "Ubuntu (WSL)": {
+          "path": "C:\\Windows\\System32\\wsl.exe",
+          "args": [
+            "-d",
+            "Ubuntu"
+          ]
+        },
+        "Windows Terminal": {
+          "path": "C:\\Windows\\System32\\wsl.exe",
+          "args": [
+            "-d",
+            "Ubuntu"
+          ]
+        }
+      },
+      "terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)",
+      "[json]": {
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+      },
+      "powershell.promptToUpdatePowerShell": false,
+      "terminal.integrated.scrollback": 10000000,
+      "redhat.telemetry.enabled": false,
+      "editor.matchBrackets": "never",
+      "workbench.preferredDarkColorTheme": "Default Dark+",
+      "workbench.preferredHighContrastColorTheme": "Default High Contrast",
+      "workbench.iconTheme": "material-icon-theme", //"vscode-icons",
+      "editor.cursorBlinking": "smooth",
+      "editor.cursorSmoothCaretAnimation": true,
+      "editor.cursorStyle": "block",
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.formatOnPaste": true,
+      "editor.formatOnSave": true,
+      "editor.formatOnType": true,
+      "editor.minimap.enabled": false,
+      "editor.scrollbar.vertical": "auto",
+      "editor.tabSize": 2,
+      "editor.guides.indentatation": false,
+      "indenticator.width": 0.1,
+      "identicator.color.dark": "rgba(255,255,255,0.2)",
+      "editor.foldingMaximumRegions": 65000,
+      "git.autofetch": true,
+      "git.autofetchPeriod": 30,
+      "git.autorefresh": true,
+      "json.maxItemsComputed": 10000000,
+      "indentRainbow.updateDelay": 100,
+      "workbench.colorTheme": "One Dark Pro Mix",
+      "search.searchEditor.defaultNumberOfContextLines": 1,
+      "breadcrumbs.enabled": false,
+      "terminal.integrated.defaultProfile.linux": "zsh",
+      "[jsonc]": {
+        "editor.defaultFormatter": "vscode.json-language-features"
+      },
+      "workbench.layoutControl.enabled": false,
+      "window.commandCenter": false,
+      "workbench.sideBar.location": "right",
+      "terminal.integrated.profiles.linux": {
+        "zsh": {
+          "path": "/bin/zsh"
+        },
+        "pwsh": {
+          "path": "pwsh",
+          "icon": "terminal-powershell"
+        },
+        "bash": {
+          "path": "bash",
+          "icon": "terminal-bash"
+        }
+      },
+      "terminal.integrated.automationProfile.linux": {},
+      "security.workspace.trust.untrustedFiles": "open",
+      "vs-kubernetes": {
+        "vs-kubernetes.knownKubeconfigs": [
+          "/home/vscode/.kube/docker-k8s",
+          "/home/vscode/.kube/kubeconfig_aws-us-west-2-prod1",
+          "/home/vscode/.kube/kubeconfig_aws-us-west-2-uat1",
+          "/home/vscode/.kube/kubeconfig_aws-us-west-2-qa1"
+        ]
+      },
+      "vsicons.dontShowNewVersionMessage": true,
+      "terminal.integrated.enableMultiLinePasteWarning": false,
+      "window.zoomLevel": 3, //1
+      "[python]": {
+        "editor.formatOnType": true,
+        "editor.formatOnSave": true
+      }
+    }
+  }
+}

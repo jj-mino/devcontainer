@@ -1,0 +1,213 @@
+FROM ubuntu:latest
+
+################################################# ENV Vars
+ENV TZ="America/Argentina/Buenos_Aires"
+ENV DEBIAN_FRONTEND=noninteractive
+ARG USERNAME=user
+ENV USER_UID=1000
+ENV USER_GID=$USER_UID
+
+# Package Versions - updated on 09/04/2023
+ENV DOCKER_VERSION=5:24.0.5-1~ubuntu.22.04~jammy
+ENV GOLANG_VERSION=1.20.6
+ENV TERRAFORM_VERSION=1.5.6
+ENV KUBECTL_VER=1.28.1
+ENV HELM_VERSION=3.12.3
+
+
+################################################# Install apps
+RUN apt-get update -y ;\
+  apt-get upgrade -y
+
+RUN apt-get install -y software-properties-common
+
+RUN apt-get install -y \
+  apt-transport-https \
+  ca-certificates \
+  curl \
+  vim \
+  wget \
+  gnupg \
+  git \
+  lsb-release \
+  unzip \
+  zsh \
+  fonts-powerline \
+  default-jre \
+  dnsutils \
+  telnet \
+  watch \
+  python3 \
+  python3-pip \
+  locales \
+  locales-all \
+  tzdata \
+  jq
+
+# Installing + Setting Up GO Environment
+RUN wget https://go.dev/dl/go$GOLANG_VERSION.linux-amd64.tar.gz --retry-connrefused --waitretry=1 --read-timeout=20 --timeout=15 -t 0 \
+	&& tar -xzf go$GOLANG_VERSION.linux-amd64.tar.gz -C /usr/local/ \
+	&& rm go$GOLANG_VERSION.linux-amd64.tar.gz
+ENV PATH=/usr/local/go/bin:$PATH
+
+# Installing Terraform 
+RUN curl https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip -o terraform.zip
+RUN unzip terraform.zip  -d /usr/local/bin  
+RUN rm terraform.zip
+
+# Installing Helm
+RUN wget https://get.helm.sh/helm-v$HELM_VERSION-linux-amd64.tar.gz -O /tmp/helm-v$HELM_VERSION-linux-amd64.tar.gz && \
+  tar -zxvf /tmp/helm-v$HELM_VERSION-linux-amd64.tar.gz && \
+  mv linux-amd64/helm /usr/local/bin/helm && \
+  chmod +x /usr/local/bin/helm
+
+ENV PATH=~/.linuxbrew/bin:~/.linuxbrew/sbin:$PATH
+
+# Docker CE
+RUN curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-ce-archive-keyring.gpg ; echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-ce-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker-ce.list > /dev/null ; apt-get update && apt-get install docker-ce-cli=${DOCKER_VERSION} docker-ce=${DOCKER_VERSION} containerd.io docker-compose-plugin -y
+
+
+## Installing eksctl
+# RUN curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp && \
+#  mv /tmp/eksctl /usr/local/bin
+
+## Installing Azure CLI
+# RUN curl -sL https://aka.ms/InstallAzureCLIDeb | bash
+
+## Install kubernetes management software
+RUN apt-get update -y && apt-get install kubecolor -y
+RUN wget https://storage.googleapis.com/kubernetes-release/release/v$KUBECTL_VER/bin/linux/amd64/kubectl -O /usr/local/bin/kubectl && chmod +x /usr/local/bin/kubectl
+RUN curl -LO https://storage.googleapis.com/kubedog-tuf/targets/releases/0.6.3/linux-amd64/bin/kubedog -O http://storage.googleapis.com/kubedog-tuf/targets/signatures/0.6.3/linux-amd64/bin/kubedog.sig \
+  && chmod +x ./kubedog \
+  && mv ./kubedog /usr/local/bin/kubedog
+
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip" ;\
+  unzip awscliv2.zip ;\
+  sh ./aws/install
+
+RUN curl -fsSL https://deb.nodesource.com/setup_17.x | -E bash - ;\
+  apt-get update -y ;\
+  apt-get install -y nodejs npm
+
+RUN pip3 install ansible \
+  ansible[azure] \
+  ansible[amazon] \
+  ansible[google.cloud] \
+  boto3 \
+  botocore \
+  colorama \
+  # locust \
+  kubernetes \
+  airflow-python-sdk \
+  tabulate
+
+RUN ansible-galaxy collection install community.kubernetes
+
+RUN wget -q https://packages.microsoft.com/config/ubuntu/22.04/packages-microsoft-prod.deb ;\
+  dpkg -i packages-microsoft-prod.deb ;\
+  apt-get update -y ;\
+  apt-get install -y powershell
+
+SHELL ["pwsh", "-NoProfile", "-Command"]
+RUN install-module -confirm:$false -allowclobber -force -scope allusers -name pester, DnsClient-PS, newtonsoft.json, az, AWS.Tools.Installer, AWS.Tools.SecretsManager
+
+SHELL ["/bin/bash", "-c"]
+
+
+########################################################
+# Install sudo
+RUN groupadd --gid $USER_GID $USERNAME ;\
+  useradd --uid $USER_UID --gid $USER_GID -m $USERNAME ;\
+  apt-get install -y sudo ;\
+  echo $USERNAME ALL=\(root\) NOPASSWD:ALL > /etc/sudoers.d/$USERNAME ;\
+  chmod 0440 /etc/sudoers.d/$USERNAME
+
+COPY p10k.zsh /tmp/p10k.zsh
+
+USER $USERNAME
+RUN sudo mkdir ~/.kube ~/.aws ~/.linuxbrew ~/.krew
+RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/v1.1.2/zsh-in-docker.sh)" -- \
+  -p git \
+  -p 'history-substring-search'
+RUN sudo cp /tmp/p10k.zsh ~/.p10k.zsh
+RUN sudo chmod -R 777 ~/
+
+# install brew
+RUN git clone https://github.com/Homebrew/brew ~/.linuxbrew/Homebrew ;\
+  mkdir ~/.linuxbrew/bin ;\
+  ln -s ../Homebrew/bin/brew ~/.linuxbrew/bin ;\
+  eval $(~/.linuxbrew/bin/brew shellenv) ;\
+  brew update --force --quiet
+ENV PATH=/home/$USERNAME/.linuxbrew/Homebrew/bin:/home/$USERNAME/.linuxbrew/Homebrew/bin:$PATH
+
+
+RUN brew tap aws/tap ;\
+  brew install eks-node-viewer \
+  gh \
+  kube-ps1 \
+  cilium-cli \
+  hubble \
+  kubectx \
+  kubent
+
+# Installing Krew
+RUN ( \
+  set -x; mkdir ~/.krew ; cd ~/.krew && \
+  OS="$(uname | tr '[:upper:]' '[:lower:]')" && \
+  ARCH="$(uname -m | sed -e 's/x86_64/amd64/' -e 's/\(arm\)\(64\)\?.*/\1\2/' -e 's/aarch64$/arm64/')" && \
+  KREW="krew-${OS}_${ARCH}" && \
+  pwd && \
+  echo $KREW && \
+  curl -fsSLO "https://github.com/kubernetes-sigs/krew/releases/latest/download/${KREW}.tar.gz" && \
+  tar zxvf "${KREW}.tar.gz" && \
+  ./"${KREW}" install krew \
+)
+ENV PATH=/home/$USERNAME/.krew/bin:$PATH
+
+# Install krew plugins
+RUN kubectl krew install images \
+  ktop \
+  whoami \
+  access-matrix \
+  neat \
+  tree \
+  node-shell \
+  tail \
+  get-all \
+  pod-dive \
+  resource-capacity \
+  df-pv \
+  view-allocations \
+  view-utilization \
+  who-can \
+  kubesec-scan \
+  view-secret \
+  iexec \
+  spy \
+  sniff \
+  fuzzy \
+  stern \
+  status \
+  podevents \
+  ipick \
+  pexec \
+  exec-as \
+  blame \
+  custom-cols \
+  explore \
+  fields \
+  ice
+
+# install pulumi
+# RUN curl -sSL https://get.pulumi.com | sh; \
+#   python3 -m venv venv; \
+#   venv/bin/pip3 install "pulumi>=3.0.0,<4.0.0" "pulumi-aws>=6.0.2,<7.0.0" "pulumi_mongodbatlas==3.7.2" "pulumi_mongodbatlas==3.7.2" "pulumi_kubernetes==4.0.3" "requests~=2.31.0"
+
+# moved it here as below files are mostly modified
+COPY aws-profiles /tmp/aws-profiles
+COPY aws-credentials /tmp/aws-credentials
+COPY zshrc /tmp/zshrc
+RUN sudo cp /tmp/aws-profiles ~/.aws/config
+RUN sudo cp /tmp/aws-credentials ~/.aws/credentials
+RUN sudo cp /tmp/zshrc ~/.zshrc
+RUN sudo chmod -R 777 ~/

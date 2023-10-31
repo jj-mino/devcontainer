@@ -1,0 +1,9 @@
+[profile mywawesomeprofile]
+sso_start_url = https://ssourl.awsapps.com/start
+sso_region = us-west-2
+sso_account_id = accountid
+sso_role_name = rolename
+
+[profile]
+region=us-west-2
+output=json
