@@ -132,18 +132,18 @@ alias grep='grep --color=auto'
 alias k='kubectl'
 alias kc='\kubectl ctx'
 alias kp='kubectl ipick'
-alias stern='kubectl stern'
+# alias stern='kubectl stern'
 alias branch='git branch --sort=-committerdate'
 
 command -v kubecolor >/dev/null 2>&1 && alias kubectl="kubecolor"
 
 source <(kubectl completion zsh)
 
-source <(stern --completion=zsh)
+# source <(stern --completion=zsh)
 
-source <(kpexec --completion zsh) 
+# source <(kpexec --completion zsh) 
 
-gh config set git_protocol https -h github.com && gh auth setup-git && gh auth login --with-token < .devcontainer/github_pat.txt 
+# gh config set git_protocol https -h github.com && gh auth setup-git && gh auth login --with-token < .devcontainer/github_pat.txt 
 git config --global core.editor "code --wait"
 
 alias kresources='kubectl custom-cols -o resources pods'

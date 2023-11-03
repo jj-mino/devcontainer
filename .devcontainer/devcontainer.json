@@ -9,23 +9,29 @@
     ".devcontainer/.env"
     // ${localWorkspaceFolder}/.devcontainer/.env
   ],
-  "build": {
-    "args": {
-      "USERNAME": "jj"
-      // "USERNAME": "${localEnv:USER}"
-    }
-  },
-  "postAttachCommand": "apt update",
+  //// commented as I'm not building the docker image
+  // "build": {
+  //   "args": {
+  //     "USERNAME": "jj"
+  //     // "USERNAME": "${localEnv:USER}"
+  //   }
+  // },
+  "image": "ubuntu:latest",
+  // "containerUser": "jj",
   "features": {
     // look for available features at https://containers.dev/features
     // use the "version" attribute to pin to a specific version
+    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
+      "packages": "software-properties-common,apt-transport-https,ca-certificates,curl,vim,wget,gnupg,git,lsb-release,unzip,zsh,fonts-powerline,default-jre,dnsutils,telnet,watch,python3,python3-pip,locales,locales-all,tzdata,jq,kubecolor,sudo",
+      "upgradePackages": "true"
+    },
     "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
       "version": "1.27",
       "helm": "latest"
     },
     "ghcr.io/devcontainers/features/terraform:1": {},
     "ghcr.io/devcontainers/features/go:1": {},
-    "ghcr.io/devcontainers/features/docker-in-docker:1": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2.7.1": {
       "moby": true
     },
     "ghcr.io/devcontainers/features/aws-cli:1": {},
@@ -35,23 +41,22 @@
       "plugins": "git kubectl zsh-autosuggestions zsh-syntax-highlighting fast-syntax-highlighting zsh-autocomplete"
     },
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/itsmechlark/features/act:1": {},
-    "ghcr.io/devcontainers-contrib/features/neovim-apt-get:1": {},
+    "ghcr.io/itsmechlark/features/act:1": {}, //?
+    "ghcr.io/devcontainers-contrib/features/neovim-apt-get:1": {}, //?
     "ghcr.io/devcontainers/features/powershell:1": {
-      "modules": "pester,DnsClient-PS,newtonsoft.json,az,AWS.Tools.Installer,AWS.Tools.SecretsManager"
+      "modules": "pester,DnsClient-PS,newtonsoft.json,az,AWS.Tools.Installer,AWS.Tools.SecretsManager,oh-my-posh"
     },
-    "ghcr.io/audacioustux/devcontainers/pulumi:1": {},
-    "ghcr.io/rocker-org/devcontainer-features/apt-packages:1": {
-      "packages": "software-properties-common,apt-transport-https,ca-certificates,curl,vim,wget,gnupg,git,lsb-release,unzip,zsh,fonts-powerline,default-jre,dnsutils,telnet,watch,python3,python3-pip,locales,locales-all,tzdata,jq"
-    },
+    // "ghcr.io/audacioustux/devcontainers/pulumi:1": {},
     "ghcr.io/meaningful-ooo/devcontainer-features/homebrew:2": {
       "shallowClone": "false" // Shallow clone allows significant reduction in the installation size at the expense of not being able to run brew update
     },
     "ghcr.io/audacioustux/devcontainers/cilium:1": {}, // cilium cli
     "ghcr.io/devcontainers-contrib/features/kubectx-kubens:1": {}
   },
-  // "image": "dev",
-  "dockerFile": "./dockerfile",
+  "overrideFeatureInstallOrder": [
+    "ghcr.io/rocker-org/devcontainer-features/apt-packages"
+  ],
+  // "dockerFile": "./Dockerfile",
   "customizations": {
     "vscode": {
       "extensions": [
@@ -109,13 +114,19 @@
             "-d",
             "Ubuntu"
           ]
+        }
+      },
+      "terminal.integrated.profiles.linux": {
+        "zsh": {
+          "path": "/bin/zsh"
         },
-        "Windows Terminal": {
-          "path": "C:\\Windows\\System32\\wsl.exe",
-          "args": [
-            "-d",
-            "Ubuntu"
-          ]
+        "pwsh": {
+          "path": "pwsh",
+          "icon": "terminal-powershell"
+        },
+        "bash": {
+          "path": "bash",
+          "icon": "terminal-bash"
         }
       },
       "terminal.integrated.defaultProfile.windows": "Ubuntu (WSL)",
@@ -158,27 +169,11 @@
       "workbench.layoutControl.enabled": false,
       "window.commandCenter": false,
       "workbench.sideBar.location": "right",
-      "terminal.integrated.profiles.linux": {
-        "zsh": {
-          "path": "/bin/zsh"
-        },
-        "pwsh": {
-          "path": "pwsh",
-          "icon": "terminal-powershell"
-        },
-        "bash": {
-          "path": "bash",
-          "icon": "terminal-bash"
-        }
-      },
       "terminal.integrated.automationProfile.linux": {},
       "security.workspace.trust.untrustedFiles": "open",
       "vs-kubernetes": {
         "vs-kubernetes.knownKubeconfigs": [
-          "/home/vscode/.kube/docker-k8s",
-          "/home/vscode/.kube/kubeconfig_aws-us-west-2-prod1",
-          "/home/vscode/.kube/kubeconfig_aws-us-west-2-uat1",
-          "/home/vscode/.kube/kubeconfig_aws-us-west-2-qa1"
+          "/home/vscode/.kube/docker-k8s"
         ]
       },
       "vsicons.dontShowNewVersionMessage": true,
@@ -189,5 +184,12 @@
         "editor.formatOnSave": true
       }
     }
-  }
+  },
+  // Use 'postCreateCommand' to run commands after the container is created.
+  // "postCreateCommand": "apt-get -y update; apt-get -y install curl"
+  "updateContentCommand": "sh .devcontainer/update-content.sh",
+  "postCreateCommand": "sh .devcontainer/post-create.sh",
+  "mounts": [
+    "source=${env:HOME}${env:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind"
+  ]
 }
